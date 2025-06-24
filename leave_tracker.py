@@ -48,6 +48,11 @@ def display_calendar(df, year, month, filter_name):
                 position: relative;
                 background-color: #eaf0f6;
                 overflow: visible;
+                color: black;
+            }
+            .leave-day {
+                background-color: #1f4e79 !important;
+                color: white !important;
             }
             .hover-box {
                 display: none;
@@ -62,14 +67,7 @@ def display_calendar(df, year, month, filter_name):
                 box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
                 font-size: 14px;
                 width: 250px;
-            }
-            .dot {
-                height: 12px;
-                width: 12px;
-                background-color: #ff4b4b;
-                border-radius: 50%;
-                display: inline-block;
-                margin-top: 10px;
+                color: black;
             }
             .hover-trigger:hover .hover-box {
                 display: block;
@@ -92,21 +90,20 @@ def display_calendar(df, year, month, filter_name):
             row = st.columns(7)
 
         leaves_today = leave_dict.get(day, [])
-        dot = ""
+        leave_applied = False
         hover_details = ""
 
         for leave in leaves_today:
             if filter_name != "All" and leave['name'] != filter_name:
                 continue
 
-            dot = "<div class='dot'></div>"
+            leave_applied = True
             hover_details += f"<div><strong>{leave['name']}</strong><br>{leave['type']} ({leave['duration']})</div><hr>"
 
-        if dot:
+        if leave_applied:
             cell_html = f"""
-                <div class='day-box hover-trigger'>
+                <div class='day-box leave-day hover-trigger'>
                     {day.day}<br>
-                    {dot}
                     <div class='hover-box'>{hover_details}</div>
                 </div>
             """
@@ -136,11 +133,10 @@ if is_local_environment():
         st.error("Excel file not found locally. Please ensure it's in the same folder.")
         st.stop()
 else:
-    if "uploaded" not in st.session_state:
+    if "df" not in st.session_state:
         uploaded_file = st.file_uploader("📤 Upload the team leave Excel file", type=["xlsx"], label_visibility="collapsed")
         if uploaded_file:
             df = load_data(uploaded_file)
-            st.session_state.uploaded = True
             st.session_state.df = df
         else:
             st.info("Please upload the Excel file to begin.")
