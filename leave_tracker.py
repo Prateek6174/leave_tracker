@@ -4,6 +4,8 @@ import streamlit as st
 import pandas as pd
 import calendar
 from datetime import datetime
+import os
+import socket
 
 # ---------- STEP 1: Load and Clean Data ----------
 @st.cache_data
@@ -122,10 +124,28 @@ def display_calendar(df, year, month, filter_name):
 st.set_page_config(page_title="YED Leave Tracker", layout="wide")
 st.title("YED Leave Tracker")
 
-uploaded_file = st.file_uploader("📤 Upload the team leave Excel file", type=["xlsx"])
-if uploaded_file:
-    df = load_data(uploaded_file)
 
+def is_local_environment():
+    return socket.gethostname().lower().startswith("desktop") or os.path.exists("Leave Tracker (YED).xlsx")
+
+if is_local_environment():
+    file_path = os.path.join(os.getcwd(), "Leave Tracker (YED).xlsx")
+    if os.path.exists(file_path):
+        df = load_data(file_path)
+    else:
+        st.error("Excel file not found locally. Please ensure it's in the same folder.")
+        st.stop()
+else:
+    uploaded_file = st.file_uploader("📤 Upload the team leave Excel file", type=["xlsx"], label_visibility="collapsed")
+    if uploaded_file:
+        df = load_data(uploaded_file)
+        st.experimental_rerun()
+    else:
+        st.info("Please upload the Excel file to begin.")
+        st.stop()
+
+# Only show calendar if df is loaded
+if 'df' in locals():
     st.sidebar.header("🔍 Filter")
     year = st.sidebar.selectbox("Year", list(range(2024, 2027)), index=1)
     month = st.sidebar.selectbox("Month", list(range(1, 13)), format_func=lambda m: calendar.month_name[m])
@@ -134,5 +154,3 @@ if uploaded_file:
     filter_name = st.sidebar.selectbox("Employee", all_names)
 
     display_calendar(df, year, month, filter_name)
-else:
-    st.info("Please upload the Excel file to begin.")
