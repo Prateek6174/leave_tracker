@@ -4,12 +4,11 @@ import streamlit as st
 import pandas as pd
 import calendar
 from datetime import datetime
-import os
 
 # ---------- STEP 1: Load and Clean Data ----------
 @st.cache_data
-def load_data(file_path):
-    df = pd.read_excel(file_path)
+def load_data(file):
+    df = pd.read_excel(file)
     df = df.iloc[:, 3:]
     df.columns = ['Email', 'Name', 'Leave Date', 'Leave Type', 'Duration']
     df['Leave Date'] = pd.to_datetime(df['Leave Date'])
@@ -123,11 +122,9 @@ def display_calendar(df, year, month, filter_name):
 st.set_page_config(page_title="YED Leave Tracker", layout="wide")
 st.title("YED Leave Tracker")
 
-# Set path to default Excel file (ensure this path is correct)
-default_excel_path = os.path.join(os.getcwd(), "Leave Tracker (YED).xlsx")
-
-if os.path.exists(default_excel_path):
-    df = load_data(default_excel_path)
+uploaded_file = st.file_uploader("📤 Upload the team leave Excel file", type=["xlsx"])
+if uploaded_file:
+    df = load_data(uploaded_file)
 
     st.sidebar.header("🔍 Filter")
     year = st.sidebar.selectbox("Year", list(range(2024, 2027)), index=1)
@@ -138,4 +135,4 @@ if os.path.exists(default_excel_path):
 
     display_calendar(df, year, month, filter_name)
 else:
-    st.error("Leave Excel file not found. Please ensure 'Leave Tracker (YED).xlsx' exists in the same folder as this script.")
+    st.info("Please upload the Excel file to begin.")
