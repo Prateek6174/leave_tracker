@@ -136,13 +136,19 @@ if is_local_environment():
         st.error("Excel file not found locally. Please ensure it's in the same folder.")
         st.stop()
 else:
+   if "file_uploaded" not in st.session_state:
     uploaded_file = st.file_uploader("📤 Upload the team leave Excel file", type=["xlsx"], label_visibility="collapsed")
     if uploaded_file:
         df = load_data(uploaded_file)
+        st.session_state["file_uploaded"] = True
+        st.session_state["df"] = df
         st.experimental_rerun()
     else:
         st.info("Please upload the Excel file to begin.")
         st.stop()
+   else:
+    df = st.session_state["df"]
+
 
 # Only show calendar if df is loaded
 if 'df' in locals():
