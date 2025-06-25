@@ -6,23 +6,48 @@ import calendar
 from datetime import datetime
 import os
 import socket
+from io import BytesIO
+import sys
+
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 # ---------- STEP 1: Load and Clean Data ----------
 @st.cache_data
 def load_data(file):
-    df = pd.read_excel(file)
-    df = df.iloc[:, 3:]
-    df.columns = ['Email', 'Name', 'Leave Date', 'Leave Type', 'Duration']
-    df['Leave Date'] = pd.to_datetime(df['Leave Date'])
-    df['Duration'] = df['Duration'].map({1: 'Full Day', 0.5: 'Half Day'})
-    df['Details'] = df.apply(
-        lambda row: {
-            "name": row['Name'],
-            "type": row['Leave Type'],
-            "duration": row['Duration']
-        }, axis=1
-    )
-    return df
+    try:
+        # Handle both local files and uploaded files
+        if hasattr(file, "read"):  # Uploaded via Streamlit
+            file_bytes = BytesIO(file.read())
+        else:  # Local file path
+            file_bytes = file
+
+        df = pd.read_excel(file_bytes, engine="openpyxl")
+
+        df = df.iloc[:, 3:]
+        df.columns = ['Email', 'Name', 'Leave Date', 'Leave Type', 'Duration']
+        df['Leave Date'] = pd.to_datetime(df['Leave Date'])
+        df['Duration'] = df['Duration'].map({1: 'Full Day', 0.5: 'Half Day'})
+        df['Details'] = df.apply(
+            lambda row: {
+                "name": row['Name'],
+                "type": row['Leave Type'],
+                "duration": row['Duration']
+            }, axis=1
+        )
+        return df
+
+    except Exception as e:
+        st.error(f"⚠️ Error while loading file: {e}")
+        return pd.DataFrame()
 
 # ---------- STEP 2: Calendar Display with Hover Popup ----------
 def display_calendar(df, year, month, filter_name):
@@ -122,27 +147,15 @@ st.set_page_config(page_title="YED Leave Tracker", layout="wide")
 st.title("YED Leave Tracker")
 
 
-def is_local_environment():
-    return socket.gethostname().lower().startswith("desktop") or os.path.exists("Leave Tracker (YED).xlsx")
+# ---------- Load Built-in Excel File (no upload needed) ----------
+file_path = os.path.join(os.path.dirname(__file__), "Leave Tracker (YED).xlsx")
 
-if is_local_environment():
-    file_path = os.path.join(os.getcwd(), "Leave Tracker (YED).xlsx")
-    if os.path.exists(file_path):
-        df = load_data(file_path)
-    else:
-        st.error("Excel file not found locally. Please ensure it's in the same folder.")
-        st.stop()
+if os.path.exists(file_path):
+    df = load_data(file_path)
 else:
-    if "df" not in st.session_state:
-        uploaded_file = st.file_uploader("📤 Upload the team leave Excel file", type=["xlsx"], label_visibility="collapsed")
-        if uploaded_file:
-            df = load_data(uploaded_file)
-            st.session_state.df = df
-        else:
-            st.info("Please upload the Excel file to begin.")
-            st.stop()
-    else:
-        df = st.session_state.df
+    st.error("Leave Tracker Excel file not found in the app directory.")
+    st.stop()
+
 
 # Only show calendar if df is loaded
 if 'df' in locals():
